@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-label="Atlassian Agent — reads your Confluence and Jira, and shows you the diff before anything is published">
+  <title>Atlassian Agent</title>
+  <!-- The product's one idea, as a still: an eyebrow, the wordmark, one line
+       under it, and the thing the tool actually hands you — a diff that has
+       not been published. No decoration for its own sake.
+       Two accents, each with one job: Atlassian blue names the systems it
+       talks to, red is reserved for the hold. -->
+  <rect width="1200" height="340" fill="#FDFDFB"/>
+  <rect y="339" width="1200" height="1" fill="#E5E4DE"/>
+
+  <g font-family="Archivo, ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+    <!-- eyebrow -->
+    <circle cx="72" cy="74" r="4" fill="#0052CC"/>
+    <text x="88" y="79" font-size="14" font-weight="600" letter-spacing="2.2" fill="#6F6F6B">CONFLUENCE · JIRA</text>
+
+    <!-- wordmark -->
+    <text x="70" y="178" font-size="78" letter-spacing="-3.4">
+      <tspan fill="#0052CC" font-weight="700">atlassian</tspan><tspan fill="#6F6F6B" font-weight="400"> agent</tspan>
+    </text>
+
+    <!-- one line, as on the page -->
+    <text x="72" y="232" font-size="25" fill="#6F6F6B">Reads your Confluence and Jira, drafts the change,</text>
+    <text x="72" y="268" font-size="25" fill="#6F6F6B">and shows you the diff before anything is published.</text>
+
+    <text x="72" y="312" font-size="14" fill="#A3A39D">Every write is a dry run. Nothing ships until you approve the exact change.</text>
+  </g>
+
+  <!-- What the tool returns when an agent asks to write: a diff, and a hold. -->
+  <g>
+    <rect x="760" y="84" width="380" height="190" rx="12" fill="#FFFFFF" stroke="#E5E4DE" stroke-width="1"/>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+      <text x="784" y="113" font-size="13" fill="#6F6F6B">confluence_update_page</text>
+      <rect x="760" y="129" width="380" height="1" fill="#E5E4DE"/>
+      <text x="784" y="160" font-size="14.5" fill="#A3A39D">- &lt;p&gt;Rollout starts in May.&lt;/p&gt;</text>
+      <text x="784" y="186" font-size="14.5" fill="#0E0E10">+ &lt;p&gt;Rollout starts in June.&lt;/p&gt;</text>
+      <rect x="760" y="208" width="380" height="1" fill="#E5E4DE"/>
+    </g>
+    <circle cx="790" cy="239" r="4.5" fill="#FF000D"/>
+    <g font-family="Archivo, ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+      <text x="804" y="244" font-size="12" font-weight="700" letter-spacing="1.6" fill="#FF000D">DRY RUN</text>
+      <text x="876" y="244" font-size="12" fill="#6F6F6B">nothing published yet</text>
+    </g>
+  </g>
+</svg>

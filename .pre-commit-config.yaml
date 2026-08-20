@@ -1,0 +1,76 @@
+---
+# Install with: uv run pre-commit install --install-hooks
+# Run over everything with: uv run pre-commit run --all-files
+default_install_hook_types: [pre-commit, commit-msg]
+default_language_version:
+  python: python3.11
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=512]
+        # uv.lock is a generated text file we deliberately commit, and it is
+        # legitimately over the limit. Excluding it by name keeps the guard
+        # tight for everything else rather than raising it globally.
+        exclude: ^uv\.lock$
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.9.28
+    hooks:
+      # Keeps uv.lock honest whenever pyproject.toml moves.
+      - id: uv-lock
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      # The upstream mypy mirror runs in its own isolated environment and
+      # cannot see project dependencies, which produces phantom import errors.
+      # Run the project's own mypy instead.
+      - id: mypy
+        name: mypy
+        entry: uv run --frozen mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
+
+      # This repository's whole point is that Atlassian credentials stay in the
+      # environment. A committed .env would defeat it, so refuse it explicitly
+      # rather than relying on .gitignore, which a `git add -f` walks straight
+      # past.
+      - id: no-dotenv-committed
+        name: no .env committed
+        language: fail
+        files: '^\.env$|(^|/)\.env\.(local|[^.]*)$'
+        exclude: '(^|/)\.env\.example$'
+        entry: >-
+          .env files hold live Atlassian tokens and must never be committed.
+          Put placeholders in .env.example instead.
+
+      - id: no-agent-coauthors
+        name: no AI Co-Authored-By trailers
+        language: pygrep
+        stages: [commit-msg]
+        args: [--ignore-case, --multiline]
+        entry: 'co-authored-by:.*(claude|anthropic|copilot|cursor|gemini|codex|chatgpt|openai)'

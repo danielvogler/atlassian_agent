@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "atlassian-agent"
+version = "0.1.0"
+description = "MCP-first Jira and Confluence tools for coding agents, where every write is a dry run first."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Daniel Vogler" }]
+keywords = ["atlassian", "confluence", "jira", "mcp", "coding-agent"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+dependencies = [
+  "atlassian-python-api>=3.41.0",
+  "fastmcp>=3.4.0",
+  "python-dotenv>=1.0.1",
+  "requests>=2.32.0",
+  "typer>=0.12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/danielvogler/atlassian_agent"
+Source = "https://github.com/danielvogler/atlassian_agent"
+Issues = "https://github.com/danielvogler/atlassian_agent/issues"
+
+[dependency-groups]
+# Installed by default with `uv sync` / `uv run`, which is how this repo is
+# meant to be driven. Nothing here is needed to run the MCP server.
+dev = [
+  "mypy>=1.11.0",
+  "pre-commit>=3.7.0",
+  "pytest>=8.2.0",
+  "ruff>=0.5.0",
+  "types-requests>=2.32.0",
+]
+
+[project.scripts]
+atlassian-agent = "atlassian_agent.cli:app"
+atlassian-agent-mcp = "atlassian_agent.mcp_server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/atlassian_agent"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+
+[tool.mypy]
+files = ["src", "tests"]
+python_version = "3.11"
+# atlassian-python-api and fastmcp ship no type information; everything this
+# repo writes itself is still checked.
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
