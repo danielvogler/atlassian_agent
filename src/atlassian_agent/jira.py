@@ -34,24 +34,50 @@ def jira_get_issue(key: str) -> dict:
         return tool_error(exc)
 
 
+def jira_get_transitions(issue_key: str) -> dict:
+    """List the transitions available on a Jira issue right now.
+
+    Workflows rename their statuses, so the target a transition leads *to* is
+    the string ``jira_transition_issue`` expects — not the transition's own
+    name. Both are returned so the right one is obvious.
+    """
+    try:
+        return {
+            "status": "success",
+            "issue_key": issue_key,
+            "transitions": _issue_transitions(issue_key),
+        }
+    except RuntimeError as exc:
+        return tool_error(exc)
+
+
 def jira_create_issue(
     fields: dict,
     update: dict | None = None,
     *,
     apply: bool = False,
 ) -> dict:
-    """Create a Jira issue, guarded by apply mode."""
-    if not (apply or apply_enabled()):
-        return {
-            "status": "dry_run",
-            "message": "Dry-run only. Re-run with apply=true or --apply to create.",
-            "fields": fields,
-            "update": update or {},
-        }
+    """Create a Jira issue, guarded by apply mode.
+
+    The dry run resolves the project and issue type against Jira's create
+    metadata and refuses when a required field is absent, so a malformed
+    ``fields`` dict fails at the read rather than at publish time.
+    """
     try:
+        target = _create_issue_target(fields)
+        if not (apply or apply_enabled()):
+            return {
+                "status": "dry_run",
+                "message": (
+                    "Dry-run only. Re-run with apply=true or --apply to create."
+                ),
+                **target,
+                "fields": fields,
+                "update": update or {},
+            }
         jira = _jira()
         result = jira.create_issue(fields=fields, update=update)
-        return {"status": "success", "result": result}
+        return {"status": "success", **target, "result": result}
     except RuntimeError as exc:
         return tool_error(exc)
 
@@ -109,20 +135,132 @@ def jira_add_comment(
 
 
 def jira_transition_issue(issue_key: str, status: str, *, apply: bool = False) -> dict:
-    """Transition a Jira issue to a target status, guarded by apply mode."""
-    if not (apply or apply_enabled()):
-        return {
-            "status": "dry_run",
-            "message": "Dry-run only. Re-run with apply=true or --apply to transition.",
-            "issue_key": issue_key,
-            "target_status": status,
-        }
+    """Transition a Jira issue to a target status, guarded by apply mode.
+
+    ``status`` is the status the issue ends up in, not the name of the
+    transition. The dry run reads the issue's available transitions and refuses
+    a target this workflow does not offer.
+    """
     try:
+        available = _issue_transitions(issue_key)
+        if not _has_target_status(available, status):
+            return {
+                "status": "error",
+                "message": (
+                    f"{issue_key} has no transition to {status!r} from its current "
+                    "status. See available_transitions."
+                ),
+                "issue_key": issue_key,
+                "target_status": status,
+                "available_transitions": available,
+            }
+        if not (apply or apply_enabled()):
+            return {
+                "status": "dry_run",
+                "message": (
+                    "Dry-run only. Re-run with apply=true or --apply to transition."
+                ),
+                "issue_key": issue_key,
+                "target_status": status,
+                "available_transitions": available,
+            }
         jira = _jira()
         result = jira.issue_transition(issue_key, status)
         return {"status": "success", "issue_key": issue_key, "result": result}
     except RuntimeError as exc:
         return tool_error(exc)
+
+
+def _issue_transitions(issue_key: str) -> list[dict]:
+    """Read the transitions Jira currently offers on an issue.
+
+    The failure message says *why* a read was attempted at all: this used to be
+    an offline echo of the arguments, and a bare missing-variable error here
+    reads like the tool broke rather than like the guard doing its job.
+    """
+    try:
+        return list(_jira().get_issue_transitions(issue_key))
+    except (RuntimeError, requests.RequestException) as exc:
+        raise RuntimeError(
+            f"Could not read the transitions for {issue_key}: {exc}. This tool "
+            "checks the target status against the issue's workflow before its "
+            "dry run, so it needs Jira credentials and an issue that exists."
+        ) from exc
+
+
+def _has_target_status(transitions: list[dict], status: str) -> bool:
+    wanted = status.strip().casefold()
+    return any(str(t.get("to", "")).strip().casefold() == wanted for t in transitions)
+
+
+def _create_issue_target(fields: dict) -> dict:
+    """Resolve the project and issue type a create would hit.
+
+    Raises rather than returning an error shape: the callers already turn a
+    RuntimeError into a tool error, and a returned dict would collide with the
+    ``status`` key of the result it gets merged into.
+    """
+    project_key = str(fields.get("project", {}).get("key", "")).strip()
+    issue_type = str(fields.get("issuetype", {}).get("name", "")).strip()
+    if not project_key or not issue_type:
+        raise RuntimeError(
+            "fields must include project.key and issuetype.name so the target "
+            "can be resolved before anything is created."
+        )
+
+    projects = _create_metadata(project_key).get("projects", [])
+    if not projects:
+        raise RuntimeError(
+            f"No creatable project {project_key!r} is visible to this token."
+        )
+
+    project = projects[0]
+    issue_types = {
+        str(entry.get("name", "")).casefold(): entry
+        for entry in project.get("issuetypes", [])
+    }
+    matched = issue_types.get(issue_type.casefold())
+    if matched is None:
+        available = sorted(entry.get("name", "") for entry in issue_types.values())
+        raise RuntimeError(
+            f"Project {project_key} has no issue type {issue_type!r}. "
+            f"Available: {available}"
+        )
+
+    missing = _missing_required_fields(matched, fields)
+    if missing:
+        raise RuntimeError(
+            f"Required fields are missing for this issue type: {missing}"
+        )
+
+    return {
+        "project_key": project_key,
+        "project_name": project.get("name", ""),
+        "issue_type": matched.get("name", issue_type),
+    }
+
+
+def _create_metadata(project_key: str) -> dict:
+    """Read the create metadata for a project, explaining the read on failure."""
+    try:
+        meta = _jira().issue_createmeta(project_key)
+    except (RuntimeError, requests.RequestException) as exc:
+        raise RuntimeError(
+            f"Could not read the create metadata for project {project_key}: "
+            f"{exc}. This tool resolves the project and issue type before its "
+            "dry run, so it needs Jira credentials and a project it can see."
+        ) from exc
+    return meta if isinstance(meta, dict) else {}
+
+
+def _missing_required_fields(issue_type_meta: dict, fields: dict) -> list[str]:
+    return sorted(
+        key
+        for key, meta in issue_type_meta.get("fields", {}).items()
+        if meta.get("required")
+        and not meta.get("hasDefaultValue")
+        and key not in fields
+    )
 
 
 def jira_get_structure(structure_url_or_id: str) -> dict:
@@ -325,6 +463,7 @@ def _parse_structure_row(entry: str, item_types: dict) -> dict:
 JIRA_MCP_TOOLS = (
     jira_search,
     jira_get_issue,
+    jira_get_transitions,
     jira_create_issue,
     jira_update_issue_fields,
     jira_add_comment,

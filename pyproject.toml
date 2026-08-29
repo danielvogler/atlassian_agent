@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "atlassian-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP-first Jira and Confluence tools for coding agents, where every write is a dry run first."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -23,7 +23,11 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "atlassian-python-api>=3.41.0",
+  # Capped at <5 deliberately. v5 restructured Confluence: the methods exist
+  # only on an instance, not the class, and get_page_by_title's first parameter
+  # was renamed `space` -> `space_key`. An unpinned range let two environments
+  # resolve different majors and behave differently on identical code.
+  "atlassian-python-api>=3.41.0,<5",
   "fastmcp>=3.4.0",
   "python-dotenv>=1.0.1",
   "requests>=2.32.0",

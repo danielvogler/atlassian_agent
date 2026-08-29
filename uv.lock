@@ -91,7 +91,7 @@ wheels = [
 
 [[package]]
 name = "atlassian-agent"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "atlassian-python-api" },
@@ -112,7 +112,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlassian-python-api", specifier = ">=3.41.0" },
+    { name = "atlassian-python-api", specifier = ">=3.41.0,<5" },
     { name = "fastmcp", specifier = ">=3.4.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "requests", specifier = ">=2.32.0" },

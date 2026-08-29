@@ -13,8 +13,8 @@ Confluence is §A. Changing the code is §B. Read the one you are here for.
 
 ## A1. What you are holding
 
-An MCP server exposing thirteen tools against a self-hosted Jira and
-Confluence. Nine read. Four write, and **every one of the writes is a dry run
+An MCP server exposing twenty-two tools against a self-hosted Jira and
+Confluence. Thirteen read. Nine write, and **every one of the writes is a dry run
 until somebody says otherwise**. That is the whole design, and §A3 is the part
 you must not improvise around.
 
@@ -36,7 +36,7 @@ it is rotated in Atlassian, not deleted from the log.
 Confirm the wiring without touching Atlassian:
 
 ```bash
-make mcp-tools    # lists all thirteen tools; needs no credentials
+make mcp-tools    # lists all twenty-two tools; needs no credentials
 ```
 
 Then confirm the credentials with one read:
@@ -62,6 +62,13 @@ Approval does not carry. An operator who approved a comment on `PROJ-41` has
 not approved one on `PROJ-42`, and approval given ten minutes ago for a diff
 you have since regenerated is approval of a different diff. Ask again.
 
+**Two dry runs read before they answer.** `jira_create_issue` resolves the
+project and issue type against Jira's create metadata; `jira_transition_issue`
+reads the transitions the issue actually offers. Both therefore need
+credentials and a target that exists, and both return `error` rather than
+`dry_run` when they cannot see one. That is the guard working, not a fault: a
+dry run that cannot see the target cannot tell you what would happen.
+
 **Confluence page updates additionally require the version you read.**
 `confluence_update_page` refuses if the page moved underneath you, because the
 storage body you are editing is no longer the one on the server, and publishing
@@ -78,10 +85,16 @@ Read tools — safe to call freely:
 
 | Tool | What it gives you |
 |---|---|
-| `confluence_get_page` | Title, ID, version, and the raw storage body |
+| `confluence_search` | CQL search — how you find a page you were not handed the URL for |
+| `confluence_get_page` | Title, ID, version, and the body — raw storage, or `body_format="text"` with markup stripped |
 | `confluence_get_page_family` | A page plus descendants (depth ≤ 4) with text previews, for choosing where to edit |
+| `confluence_get_page_history` | Who created the page and who last changed it — the question a refused update raises |
+| `confluence_get_comments` | Page comments, where review feedback usually lives |
+| `confluence_get_labels` | Labels on a page, which `label = ...` searches depend on |
+| `confluence_get_attachments` | Attached files: name, media type, size. Metadata only |
 | `jira_search` | JQL search |
 | `jira_get_issue` | One issue by key |
+| `jira_get_transitions` | The transitions an issue currently offers, and the status each leads to |
 | `jira_get_structure` | Jira Structure metadata |
 | `jira_get_structure_forest` | Structure rows: row ID, depth, item identity |
 | `jira_get_structure_values` | Text-formatted values for selected Structure rows |
@@ -90,16 +103,20 @@ Write tools — dry run unless `apply=true`:
 
 | Tool | Note |
 |---|---|
+| `confluence_add_comment` | Additive and reversible; often the right tool where an edit is reached for |
+| `confluence_add_labels` | Adds only; never removes. `unchanged` when every label is already there |
+| `confluence_create_page` | Creates a new page in a space, optionally under a parent; refuses a duplicate title |
 | `confluence_update_page` | Also requires `expected_version` from the read |
 | `confluence_append_sentence` | Appends one paragraph; returns `unchanged` if the sentence is already on the page |
-| `jira_create_issue` | |
+| `jira_create_issue` | Resolves project and issue type against create metadata first |
 | `jira_update_issue_fields` | |
 | `jira_add_comment` | |
-| `jira_transition_issue` | |
+| `jira_transition_issue` | Takes the target *status*, not the transition name; refuses one the workflow lacks |
 
-`confluence_get_page_family` before `confluence_update_page` is the usual
-sequence: it is how you find the right page rather than the one whose URL you
-happened to be given.
+`confluence_search` then `confluence_get_page_family` before
+`confluence_update_page` is the usual sequence: search finds candidate pages by
+name or text, the family read shows where each one sits, and only then do you
+edit — rather than editing the one whose URL you happened to be given.
 
 Reads take a Confluence page URL, a `/x/` tiny link, or a numeric ID. Tiny
 links are resolved by following them, and the URL host must match
@@ -120,6 +137,35 @@ Every tool returns a dict with a `status`:
 `error` is a returned value, not an exception: the MCP layer catches
 everything so a failed call does not kill the session. Read the `message`
 rather than retrying blind.
+
+## A6. What is deliberately absent
+
+Some obvious tools are missing on purpose. If you find yourself wanting one,
+this is the reasoning you are arguing against.
+
+**Deleting a page or an issue, and moving a page to a new parent or space.**
+Every guard in §A3 rests on the same mechanic: the dry run shows a diff, and
+the operator approves *that* diff. Neither of these has one. A delete's diff is
+the whole page, which tells the operator nothing they can meaningfully check,
+and a move changes no content at all — the diff is empty while the page's URL,
+its breadcrumbs, its inherited permissions and every link into it all change.
+So the one control this repository has would be showing an operator nothing at
+the exact moment it matters most. Both are also the two operations a reader
+cannot undo from the page itself: an edit is one click to revert in the version
+history, a delete needs an administrator to reach into the trash, and a move
+needs someone to know where the page went. Do them in the browser, where
+Confluence shows the consequences and your own account owns the decision.
+
+**Downloading attachment bytes.** `confluence_get_attachments` lists what is
+attached and stops there. Pulling the bytes means writing a file from a remote
+service into the workspace, which is a different class of tool from anything
+else here — it is the one operation that would let a page's content become code
+on somebody's disk. It needs its own path guard and its own size limit, and
+neither is worth inventing before there is a real use for it.
+
+**Removing a label, and editing or deleting a comment.** Additive writes are
+here because they are recoverable; the subtractive halves are not, for the same
+reason as delete.
 
 ---
 
@@ -142,14 +188,14 @@ tests/            Faked HTTP; no test may touch a network
 
 The MCP tool list is the two `*_MCP_TOOLS` tuples and nothing else. A function
 that is exported from `tools.py` but absent from a tuple is not reachable from
-an agent session — that is how `local_files` and `get_confluence_child_pages`
-currently sit, deliberately.
+an agent session — that is how `local_files` currently sits,
+deliberately.
 
 `mcp_server.py` derives each tool's public name, its tags, and its
 `readOnlyHint` / `destructiveHint` annotations from the function name. Adding a
-read tool called `get_confluence_labels` gets you `confluence_get_labels`,
+read tool called `get_confluence_watchers` gets you `confluence_get_watchers`,
 tagged `confluence`+`read`, marked read-only, for free. Adding one called
-`fetch_labels` gets you none of that. **Follow the naming or set the
+`fetch_watchers` gets you none of that. **Follow the naming or set the
 annotations by hand** — a write tool that an agent's client believes is
 read-only is the single worst bug this repository can ship.
 

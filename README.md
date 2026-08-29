@@ -24,7 +24,7 @@ Read AGENTS.md and set this up. I want you to be able to read our
 Confluence space and file Jira tickets from here.
 ```
 
-That file is written for exactly this: setup, the thirteen tools, and — the
+That file is written for exactly this: setup, the twenty-two tools, and — the
 part that matters — the rules an agent has to follow before it writes anything
 to a system your colleagues are reading.
 
@@ -34,8 +34,8 @@ The rest of this page is what the agent is working from.
 
 ## What it does
 
-It gives a coding agent an MCP server with **thirteen tools** against a
-self-hosted Jira and Confluence. Nine read. Four write.
+It gives a coding agent an MCP server with **twenty-two tools** against a
+self-hosted Jira and Confluence. Thirteen read. Nine write.
 
 **Every write is a dry run until somebody says otherwise.** Call
 `confluence_append_sentence` and you get back a unified diff and the page it
@@ -75,7 +75,7 @@ JIRA_TOKEN=your-personal-access-token
 file tools refuse to read it. Check the wiring without spending a credential:
 
 ```bash
-make mcp-tools   # lists all thirteen tools; never calls Atlassian
+make mcp-tools   # lists all twenty-two tools; never calls Atlassian
 ```
 
 ## Wiring it into an agent
@@ -112,10 +112,16 @@ Reads — safe to call freely:
 
 | Tool | What it gives you |
 |---|---|
-| `confluence_get_page` | Title, ID, version, raw storage body |
+| `confluence_search` | CQL search — how you find a page you were not handed the URL for |
+| `confluence_get_page` | Title, ID, version, and the body — raw storage, or `body_format="text"` with markup stripped |
 | `confluence_get_page_family` | A page plus descendants (depth ≤ 4) with text previews, for choosing where to edit |
+| `confluence_get_page_history` | Who created the page and who last changed it — the question a refused update raises |
+| `confluence_get_comments` | Page comments, where review feedback usually lives |
+| `confluence_get_labels` | Labels on a page, which `label = ...` searches depend on |
+| `confluence_get_attachments` | Attached files: name, media type, size. Metadata only |
 | `jira_search` | JQL search |
 | `jira_get_issue` | One issue by key |
+| `jira_get_transitions` | The transitions an issue currently offers, and the status each leads to |
 | `jira_get_structure` | Jira Structure metadata |
 | `jira_get_structure_forest` | Structure rows: row ID, depth, item identity |
 | `jira_get_structure_values` | Text-formatted values for selected Structure rows |
@@ -124,12 +130,15 @@ Writes — a diff and nothing else unless `apply=true`:
 
 | Tool | Note |
 |---|---|
+| `confluence_add_comment` | Additive and reversible; often the right tool where an edit is reached for |
+| `confluence_add_labels` | Adds only; never removes. `unchanged` when every label is already there |
+| `confluence_create_page` | Creates a new page in a space, optionally under a parent; refuses a duplicate title |
 | `confluence_update_page` | Also requires `expected_version` from the read |
 | `confluence_append_sentence` | Appends one paragraph; returns `unchanged` if the sentence is already there |
-| `jira_create_issue` | |
+| `jira_create_issue` | Resolves project and issue type against create metadata first |
 | `jira_update_issue_fields` | |
 | `jira_add_comment` | |
-| `jira_transition_issue` | |
+| `jira_transition_issue` | Takes the target *status*, not the transition name |
 
 Reads accept a page URL, a `/x/` tiny link, or a numeric ID. Tiny links are
 resolved by following them, and the host must match `CONFLUENCE_URL` — an agent

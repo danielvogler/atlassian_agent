@@ -26,14 +26,19 @@ mcp = FastMCP(
 MCP_TOOLS = (*CONFLUENCE_MCP_TOOLS, *JIRA_MCP_TOOLS)
 
 
+# Confluence functions are named <verb>_confluence_<noun>; the public tool name
+# is confluence_<verb>_<noun>, so clients see every Confluence tool grouped.
+_CONFLUENCE_VERBS = ("get", "search", "create", "update", "append", "add")
+
+
 def _tool_name(fn: Callable[..., Any]) -> str:
     name = fn.__name__
-    if name.startswith("get_confluence_"):
-        return name.replace("get_confluence_", "confluence_get_", 1)
-    if name.startswith("update_confluence_"):
-        return name.replace("update_confluence_", "confluence_update_", 1)
-    if name.startswith("append_confluence_"):
-        return name.replace("append_confluence_", "confluence_append_", 1)
+    for verb in _CONFLUENCE_VERBS:
+        if name == f"{verb}_confluence":
+            return f"confluence_{verb}"
+        prefix = f"{verb}_confluence_"
+        if name.startswith(prefix):
+            return name.replace(prefix, f"confluence_{verb}_", 1)
     return name
 
 
@@ -55,7 +60,7 @@ def _tool_annotations(fn: Callable[..., Any]) -> dict[str, Any]:
 
 
 def _is_read_tool(fn: Callable[..., Any]) -> bool:
-    return fn.__name__.startswith(("get_", "jira_get_", "jira_search"))
+    return fn.__name__.startswith(("get_", "search_", "jira_get_", "jira_search"))
 
 
 def _is_destructive_tool(fn: Callable[..., Any]) -> bool:

@@ -9,8 +9,10 @@ from dotenv import load_dotenv
 
 from atlassian_agent.tools import (
     append_confluence_sentence,
+    create_confluence_page,
     get_confluence_page,
     get_confluence_page_family,
+    search_confluence,
 )
 
 app = typer.Typer(
@@ -56,6 +58,67 @@ def family(
             print_node(child, indent + 1)
 
     print_node(data["root"])
+
+
+@app.command()
+def search(
+    cql: Annotated[
+        str,
+        typer.Argument(help='CQL, e.g. space = DOCS and title ~ "runbook".'),
+    ],
+    limit: Annotated[int, typer.Option("--limit", help="Maximum rows to return.")] = 10,
+) -> None:
+    """Find pages by CQL without opening a browser."""
+    load_dotenv()
+    data = search_confluence(cql, limit=limit)
+    typer.echo(f"Matches: {data['count']} of {data['total']}")
+    for row in data["results"]:
+        typer.echo(f"- {row['title']} (id: {row['id']}, space: {row['space_key']})")
+        if row["excerpt"]:
+            typer.echo(f"  {row['excerpt'][:200]}")
+
+
+@app.command("create-page")
+def create_page(
+    title: Annotated[str, typer.Argument(help="Title for the new page.")],
+    body: Annotated[str, typer.Argument(help="Page body in storage format.")],
+    space_key: Annotated[
+        str | None,
+        typer.Option(
+            "--space",
+            help="Target space key; derived from the parent when omitted.",
+        ),
+    ] = None,
+    parent: Annotated[
+        str | None,
+        typer.Option("--parent", help="Parent page URL or ID."),
+    ] = None,
+    apply: Annotated[
+        bool,
+        typer.Option("--apply", help="Actually create the page."),
+    ] = False,
+) -> None:
+    """Create a Confluence page; dry run unless --apply is passed."""
+    load_dotenv()
+    result = create_confluence_page(
+        space_key=space_key,
+        title=title,
+        body=body,
+        parent_url_or_id=parent,
+        apply=apply,
+    )
+    typer.echo(f"Status: {result['status']}")
+    typer.echo(f"Message: {result['message']}")
+    if result["status"] in {"dry_run", "success"}:
+        typer.echo(f"Space: {result['space_key']}")
+        typer.echo(f"Title: {result['title']}")
+        typer.echo(f"Parent: {result.get('parent_title') or '(space root)'}")
+    if result.get("url"):
+        typer.echo(f"URL: {result['url']}")
+    if result.get("diff"):
+        typer.echo("")
+        typer.echo("Diff:")
+        typer.echo(result["diff"])
 
 
 @app.command("append-sentence")
