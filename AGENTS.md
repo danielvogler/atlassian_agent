@@ -203,7 +203,7 @@ src/atlassian_agent/
   runtime.py      The process-wide apply flag
   common.py       Diff rendering, error shaping
   cli.py          Diagnostic CLI (Typer) — smoke tests, not the main interface
-scripts/          MCP launcher, tool lister, wheel verifier
+scripts/          MCP launcher, tool lister, release helpers
 tests/            Faked HTTP; no test may touch a network
 ```
 
@@ -294,7 +294,9 @@ To cut a release:
    a test fails if the two disagree.
 2. Move the `[Unreleased]` entries in `CHANGELOG.md` under a
    `## [<version>] - <date>` heading. The workflow refuses a tag whose version
-   has no such heading.
+   has no such section, and the section becomes the GitHub release's notes —
+   `scripts/changelog-section.sh <version>` prints exactly what will be
+   published, so there is no second place to keep release notes in step.
 3. `make release-check`. It runs everything CI runs, builds the sdist and
    wheel, runs `twine check`, installs the wheel into a clean virtualenv and
    registers its tools there, confirms the changelog entry and a clean tree,
@@ -302,10 +304,18 @@ To cut a release:
    deleted, but a version uploaded to PyPI can only be yanked, never replaced.
 4. `git tag -a v<version> -m "v<version>" && git push origin v<version>`.
 
-`scripts/verify-wheel.sh` is the same script the workflow runs, which is why
-the rehearsal and the release cannot drift apart. It exists because every test
-in this repository imports from the working tree: a module left out of the
-wheel, or an entry point that does not resolve, is invisible to all of them.
+A tag produces two things: the release on PyPI, and a GitHub release carrying
+the changelog section as its notes and the built sdist and wheel as its
+artifacts. The second runs only after the first succeeds — a GitHub release
+announcing a version that never reached PyPI points at nothing installable.
+Those artifacts are the ones that were uploaded, not a rebuild, so what is
+attached is what is on PyPI.
+
+`scripts/verify-wheel.sh` and `scripts/changelog-section.sh` are the same
+scripts the workflow runs, which is why the rehearsal and the release cannot
+drift apart. The first exists because every test in this repository imports
+from the working tree: a module left out of the wheel, or an entry point that
+does not resolve, is invisible to all of them.
 
 **The first release needs PyPI configured once.** On PyPI, under *Publishing*,
 add a pending trusted publisher: project `atlassian-agent-mcp`, owner

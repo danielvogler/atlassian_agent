@@ -70,8 +70,7 @@ dist-check: build ## Build, then prove the wheel installs and registers its tool
 # taken back cleanly once it is pushed.
 release-check: check dist-check ## Rehearse a release locally
 	@version=$$(uv run python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])'); \
-	grep -q "^## \[$$version\]" CHANGELOG.md \
-		|| { echo "CHANGELOG.md has no '## [$$version]' heading" >&2; exit 1; }; \
+	scripts/changelog-section.sh "$$version" > /dev/null; \
 	test -z "$$(git status --porcelain)" \
 		|| { echo "working tree is dirty; commit before tagging" >&2; exit 1; }; \
 	echo; \

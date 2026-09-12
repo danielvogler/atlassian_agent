@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- A GitHub release for every tag, created after the PyPI upload succeeds and
+  carrying the changelog section as its notes and the built sdist and wheel as
+  its artifacts. A tag previously published to PyPI and left nothing on GitHub
+  for somebody who arrived at the repository rather than at the package. The
+  attached files are the ones that were uploaded rather than a rebuild, so what
+  hangs off the release is what is on PyPI.
+- `scripts/changelog-section.sh`, which prints one version's changelog section
+  and fails if it has none. The release workflow uses it both to refuse a tag
+  with no entry and to render that entry as the release notes, so the check and
+  the notes cannot disagree; `make release-check` runs the same script.
+
 ## [0.3.0] - 2026-09-12
 
 ### Added
