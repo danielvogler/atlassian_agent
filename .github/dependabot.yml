@@ -1,0 +1,41 @@
+---
+# Both ecosystems here exist because this repository pins things by hand and a
+# hand-written pin is a pin that rots. The actions in the workflows are pinned
+# to commit SHAs, which is the right thing for supply-chain reasons and also
+# the reason nobody would ever notice a security fix: a SHA never moves.
+version: 2
+
+updates:
+  # The workflows run with this repository's token. An action pinned to a SHA
+  # is safe from a moved tag and blind to a patched vulnerability, so something
+  # has to bring the new SHA to a pull request where it can be read.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # uv.lock is committed, so a dependency only ever moves when somebody moves
+  # it. Grouped, because a lockfile refresh that arrives as eight separate pull
+  # requests gets ignored as eight separate pull requests.
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore"
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        patterns: ["*"]
+      runtime-dependencies:
+        dependency-type: production
+        # Kept separate and ungrouped from dev: atlassian-python-api and
+        # fastmcp are capped at a major for reasons written into pyproject.toml,
+        # and a major bump of either needs the comment read, not merged.
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

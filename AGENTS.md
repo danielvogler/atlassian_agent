@@ -20,6 +20,23 @@ you must not improvise around.
 
 ## A2. Setup
 
+There are two ways in, and they differ only in where the credentials live.
+
+**Installed**, published to PyPI as `atlassian-agent-mcp` — the import package
+is still `atlassian_agent`; the distribution is renamed because
+`atlassian-agent` on PyPI is an unrelated project:
+
+```bash
+uvx atlassian-agent-mcp         # or: uv tool install atlassian-agent-mcp
+```
+
+There is no repository and therefore no `.env`. The four variables come from
+the agent client's own MCP config, in its `env` block — see the README for the
+shape. Prefer `${CONFLUENCE_TOKEN}`-style expansion, which most clients support,
+over a literal token in a file that syncs.
+
+**From a clone**, which is what you want if you are changing the code:
+
 ```bash
 make setup      # venv, dependencies, git hooks, .env from the template
 ```
@@ -27,6 +44,10 @@ make setup      # venv, dependencies, git hooks, .env from the template
 Then fill in `.env` — a Confluence base URL and personal access token, and the
 same pair for Jira if the `jira_*` tools are wanted. Both are sent as
 `Authorization: Bearer <token>`.
+
+Either way the server reads `CONFLUENCE_URL`, `CONFLUENCE_TOKEN`, `JIRA_URL`
+and `JIRA_TOKEN` from the environment and nowhere else. A missing one is an
+error, never a guess.
 
 `.env` is gitignored, a pre-commit hook refuses to commit it, and the local
 file tools refuse to read it. **Never print a token value, echo it into a
@@ -182,7 +203,7 @@ src/atlassian_agent/
   runtime.py      The process-wide apply flag
   common.py       Diff rendering, error shaping
   cli.py          Diagnostic CLI (Typer) — smoke tests, not the main interface
-scripts/          MCP launcher, tool lister
+scripts/          MCP launcher, tool lister, wheel verifier
 tests/            Faked HTTP; no test may touch a network
 ```
 
@@ -192,7 +213,7 @@ an agent session — that is how `local_files` currently sits,
 deliberately.
 
 `mcp_server.py` derives each tool's public name, its tags, and its
-`readOnlyHint` / `destructiveHint` annotations from the function name. Adding a
+`read_only_hint` / `destructive_hint` annotations from the function name. Adding a
 read tool called `get_confluence_watchers` gets you `confluence_get_watchers`,
 tagged `confluence`+`read`, marked read-only, for free. Adding one called
 `fetch_watchers` gets you none of that. **Follow the naming or set the
@@ -252,3 +273,43 @@ about.
 - Keep the README's tool tables and §A4 in step with the `*_MCP_TOOLS` tuples.
   A documented tool that does not exist wastes an agent's session; an
   undocumented one never gets called.
+
+## B5. Releasing
+
+**Pushing a `v*` tag is the whole release.** `release.yml` calls the same CI
+gate main gets, builds, proves the wheel works, and uploads to PyPI. Nothing
+else publishes, and nothing publishes without a tag.
+
+There is no PyPI token anywhere — not in the repository, not in a GitHub
+secret, not on a laptop. PyPI's trusted publishing exchanges the workflow's own
+OIDC identity for a credential that lasts minutes. **Three things are
+load-bearing and PyPI matches on all of them: the filename `release.yml`, the
+environment named `pypi`, and `id-token: write`.** Rename any of them and the
+upload fails with a 403 that does not explain itself.
+
+To cut a release:
+
+1. Bump `version` in `pyproject.toml`. It is declared there and nowhere else —
+   `atlassian_agent.__version__` reads it back from the installed metadata, and
+   a test fails if the two disagree.
+2. Move the `[Unreleased]` entries in `CHANGELOG.md` under a
+   `## [<version>] - <date>` heading. The workflow refuses a tag whose version
+   has no such heading.
+3. `make release-check`. It runs everything CI runs, builds the sdist and
+   wheel, runs `twine check`, installs the wheel into a clean virtualenv and
+   registers its tools there, confirms the changelog entry and a clean tree,
+   then prints the two commands below. **Run this before tagging**: a tag can be
+   deleted, but a version uploaded to PyPI can only be yanked, never replaced.
+4. `git tag -a v<version> -m "v<version>" && git push origin v<version>`.
+
+`scripts/verify-wheel.sh` is the same script the workflow runs, which is why
+the rehearsal and the release cannot drift apart. It exists because every test
+in this repository imports from the working tree: a module left out of the
+wheel, or an entry point that does not resolve, is invisible to all of them.
+
+**The first release needs PyPI configured once.** On PyPI, under *Publishing*,
+add a pending trusted publisher: project `atlassian-agent-mcp`, owner
+`danielvogler`, repository `atlassian_agent`, workflow `release.yml`,
+environment `pypi`. Then create a GitHub environment named `pypi` on the
+repository. Until both exist, the publish step fails at the last hop with every
+earlier check green.

@@ -5,7 +5,8 @@ PAGE_URL ?= https://confluence.example.com/x/example
 SENTENCE ?= This is a test sentence from the Atlassian agent.
 
 .PHONY: help setup hooks mcp mcp-tools page family append append-apply \
-        test lint format format-check typecheck check status
+        test lint format format-check typecheck check status \
+        build dist-check release-check clean-dist
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -53,6 +54,30 @@ typecheck: ## Run mypy
 	uv run mypy
 
 check: lint format-check typecheck test mcp-tools ## Everything CI runs
+
+clean-dist: ## Remove built artifacts
+	rm -rf dist
+
+build: clean-dist ## Build the sdist and wheel into dist/
+	uv build
+
+dist-check: build ## Build, then prove the wheel installs and registers its tools
+	uvx twine check dist/*
+	scripts/verify-wheel.sh dist/*.whl
+
+# Everything the release workflow checks, before a tag exists to check it.
+# Tagging is the whole release, and a tag is the one thing here that cannot be
+# taken back cleanly once it is pushed.
+release-check: check dist-check ## Rehearse a release locally
+	@version=$$(uv run python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])'); \
+	grep -q "^## \[$$version\]" CHANGELOG.md \
+		|| { echo "CHANGELOG.md has no '## [$$version]' heading" >&2; exit 1; }; \
+	test -z "$$(git status --porcelain)" \
+		|| { echo "working tree is dirty; commit before tagging" >&2; exit 1; }; \
+	echo; \
+	echo "ready to release $$version. To publish:"; \
+	echo "  git tag -a v$$version -m 'v$$version'"; \
+	echo "  git push origin v$$version"
 
 status: ## Show git status
 	git status --short

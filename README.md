@@ -4,6 +4,7 @@
 </picture>
 
 [![CI](https://github.com/danielvogler/atlassian_agent/actions/workflows/ci.yml/badge.svg)](https://github.com/danielvogler/atlassian_agent/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/atlassian-agent-mcp.svg?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/atlassian-agent-mcp/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://docs.astral.sh/uv/)
@@ -16,8 +17,9 @@
 
 ## Start here
 
-Clone it, then point your coding agent at **[AGENTS.md](./AGENTS.md)** and tell
-it what you want done.
+Point your coding agent at **[AGENTS.md](./AGENTS.md)** — from a clone, or from
+`uvx atlassian-agent-mcp` if you only want to use it — and tell it what you
+want done.
 
 ```
 Read AGENTS.md and set this up. I want you to be able to read our
@@ -53,16 +55,29 @@ difference between a tool you can leave running and one you cannot.
 
 ---
 
-## Setup
+## Install
+
+Two routes, and the only question is whether you intend to change the code.
+
+**To use it**, nothing to clone — it is on PyPI as **`atlassian-agent-mcp`**
+(the name `atlassian-agent` belongs to an unrelated project; the import package
+here is still `atlassian_agent`):
+
+```bash
+uvx atlassian-agent-mcp        # run it, fetching it on demand
+uv tool install atlassian-agent-mcp   # or keep it installed
+```
+
+**To change it**, clone and:
 
 ```bash
 make setup       # venv, dependencies, git hooks, .env from the template
 ```
 
-Fill in `.env` with a base URL and a personal access token per service. Both
-are sent as `Authorization: Bearer <token>`. Jira is optional — without it the
-Confluence tools still work, and the `jira_*` tools return a clear error rather
-than failing obscurely.
+## Credentials
+
+A base URL and a personal access token per service, both sent as
+`Authorization: Bearer <token>`:
 
 ```bash
 CONFLUENCE_URL=https://confluence.example.com
@@ -71,8 +86,17 @@ JIRA_URL=https://jira.example.com
 JIRA_TOKEN=your-personal-access-token
 ```
 
-`.env` is gitignored, a pre-commit hook refuses to commit it, and the local
-file tools refuse to read it. Check the wiring without spending a credential:
+Jira is optional — without it the Confluence tools still work, and the `jira_*`
+tools return a clear error rather than failing obscurely.
+
+**Where those live depends on how you installed it.** From a clone they go in
+`.env`, which is gitignored, which a pre-commit hook refuses to commit, and
+which the local file tools refuse to read. An installed copy has no repository
+to hold a `.env`, so the variables come from the agent client's own config —
+the `env` block below. Nothing else changes: the server reads the environment
+either way, and a missing variable is an error rather than a guess.
+
+Check the wiring without spending a credential:
 
 ```bash
 make mcp-tools   # lists all twenty-two tools; never calls Atlassian
@@ -80,29 +104,52 @@ make mcp-tools   # lists all twenty-two tools; never calls Atlassian
 
 ## Wiring it into an agent
 
-The entrypoint is `scripts/run-atlassian-agent-mcp.sh`, which runs the server
-over stdio from the repository's own virtualenv. Register it with whichever
-client you use — for Claude Code:
-
-```bash
-claude mcp add atlassian-agent -- /absolute/path/to/atlassian_agent/scripts/run-atlassian-agent-mcp.sh
-```
-
-For a client configured by file, the shape is the same everywhere:
+**Installed** — the portable form, and the one to hand a colleague. It needs
+nothing on disk but the client's config file:
 
 ```json
 {
   "mcpServers": {
-    "atlassian-agent": {
-      "command": "/absolute/path/to/atlassian_agent/scripts/run-atlassian-agent-mcp.sh"
+    "atlassian": {
+      "command": "uvx",
+      "args": ["atlassian-agent-mcp"],
+      "env": {
+        "CONFLUENCE_URL": "https://confluence.example.com",
+        "CONFLUENCE_TOKEN": "${CONFLUENCE_TOKEN}",
+        "JIRA_URL": "https://jira.example.com",
+        "JIRA_TOKEN": "${JIRA_TOKEN}"
+      }
     }
   }
 }
 ```
 
-Restart the client afterwards, then ask it to list its tools. Credentials are
-read from this repository's `.env` at call time, so nothing needs to go into
-the client's own config.
+Those `${...}` are deliberate. Most clients — Claude Code among them — expand
+environment variables in this file, so the token stays in your shell or your
+keychain and the config stays a file you can commit to a team repository. A
+client that does not expand them leaves you pasting a live token into a
+plaintext file that syncs to wherever your dotfiles sync; if that is where you
+are, use the clone route and `.env` instead.
+
+For Claude Code, the same thing from the command line:
+
+```bash
+claude mcp add atlassian \
+  --env CONFLUENCE_URL=https://confluence.example.com \
+  --env CONFLUENCE_TOKEN="$CONFLUENCE_TOKEN" \
+  -- uvx atlassian-agent-mcp
+```
+
+**From a clone**, the entrypoint is `scripts/run-atlassian-agent-mcp.sh`, which
+runs the server from the repository's own virtualenv and picks up that
+repository's `.env` — so no credential goes into the client's config at all:
+
+```bash
+claude mcp add atlassian-agent -- /absolute/path/to/atlassian_agent/scripts/run-atlassian-agent-mcp.sh
+```
+
+Restart the client afterwards, then ask it to list its tools. Twenty-two, or
+something is wrong.
 
 ---
 
@@ -155,9 +202,9 @@ not take down the agent's session.
 ```mermaid
 flowchart LR
     AGENT["<b>coding agent</b>"]
-    MCP["<b>mcp_server.py</b><br/>names · tags · readOnlyHint<br/>catches everything"]
-    READ["<b>reads</b><br/>9 tools"]
-    WRITE["<b>writes</b><br/>4 tools"]
+    MCP["<b>mcp_server.py</b><br/>names · tags · read_only_hint<br/>catches everything"]
+    READ["<b>reads</b><br/>13 tools"]
+    WRITE["<b>writes</b><br/>9 tools"]
     DIFF["<b>diff + status: dry_run</b>"]
     HUMAN(["<b>a person approves<br/>this exact diff</b>"])
     ATL[("<b>Jira · Confluence</b>")]
@@ -172,7 +219,7 @@ flowchart LR
 ```
 
 `mcp_server.py` derives each tool's public name, its tags, and its
-`readOnlyHint` / `destructiveHint` annotations from the function name, so the
+`read_only_hint` / `destructive_hint` annotations from the function name, so the
 client's own idea of which tools are safe comes from the same place the tools
 do. `make check` lists the registered tools, because a tool that fails to
 register still lints and still tests green — and shows up only in somebody's
@@ -203,6 +250,15 @@ make help    # every target
 Tests fake the HTTP layer: none of them touch a network or need credentials,
 because CI has none and a suite that depends on a live Jira has stopped testing
 this repository.
+
+## Releasing
+
+Pushing a `v*` tag publishes to PyPI. There is no token in the repository, in a
+secret, or on anyone's laptop: the workflow's own OIDC identity is exchanged for
+a credential that lasts minutes. `make release-check` rehearses the whole thing
+locally — including installing the built wheel somewhere clean and registering
+its tools — and prints the two commands that publish. The procedure is
+[AGENTS.md §B5](./AGENTS.md).
 
 ## Scope and limits
 

@@ -54,8 +54,8 @@ def _tool_tags(fn: Callable[..., Any]) -> set[str]:
 def _tool_annotations(fn: Callable[..., Any]) -> dict[str, Any]:
     read_only = _is_read_tool(fn)
     return {
-        "readOnlyHint": read_only,
-        "destructiveHint": not read_only and _is_destructive_tool(fn),
+        "read_only_hint": read_only,
+        "destructive_hint": not read_only and _is_destructive_tool(fn),
     }
 
 

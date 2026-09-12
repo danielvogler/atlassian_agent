@@ -551,8 +551,8 @@ def test_create_confluence_page_is_registered_as_a_non_destructive_write() -> No
 
     assert "apply" in create_page.parameters["properties"]
     assert annotations is not None
-    assert annotations.readOnlyHint is False
-    assert annotations.destructiveHint is False
+    assert annotations.read_only_hint is False
+    assert annotations.destructive_hint is False
 
 
 class FakeJira:
@@ -1153,8 +1153,8 @@ def test_additive_confluence_writes_are_not_marked_destructive() -> None:
     for name in ("confluence_add_comment", "confluence_add_labels"):
         annotations = by_name[name].annotations
         assert annotations is not None
-        assert annotations.readOnlyHint is False
-        assert annotations.destructiveHint is False
+        assert annotations.read_only_hint is False
+        assert annotations.destructive_hint is False
 
 
 def test_no_delete_or_move_tool_is_registered() -> None:

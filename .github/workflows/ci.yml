@@ -6,6 +6,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # So the release workflow can run exactly this gate rather than a copy of it
+  # that drifts. Nothing reaches PyPI without passing what main passes.
+  workflow_call:
 
 permissions:
   contents: read
@@ -14,6 +17,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Every action is pinned to a commit, not a tag: a tag can be moved onto other
+# code, and an action runs with access to this workflow's token. The comment
+# after each one says which release the commit is, for the human reading it.
 jobs:
   test:
     name: test (py${{ matrix.python-version }})
@@ -21,13 +27,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
@@ -60,12 +66,12 @@ jobs:
     name: gitleaks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Full history: a token committed once and reverted is still leaked.
           fetch-depth: 0
 
       - name: Scan history for secrets
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

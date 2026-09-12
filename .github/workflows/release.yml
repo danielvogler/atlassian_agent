@@ -1,0 +1,116 @@
+---
+name: Release
+
+# Publishes to PyPI when a `v*` tag is pushed. Tagging is the whole release.
+#
+# There is no token anywhere — not in the repository, not in a secret, not on
+# anyone's laptop. PyPI's trusted publishing exchanges this workflow's OIDC
+# identity for a credential that lasts minutes, which is the same reason this
+# project keeps Atlassian tokens in the environment rather than in a file.
+# Three things are load-bearing rather than decorative, and PyPI matches on all
+# of them: the filename `release.yml`, the `pypi` environment, and
+# `id-token: write`. Rename any of them and the upload fails with a 403 that
+# does not explain itself.
+#
+# The distribution is `atlassian-agent-mcp`, not `atlassian-agent`: that name
+# belongs to an unrelated project on PyPI. The import package is still
+# `atlassian_agent`.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The same gate main gets, called rather than copied. A tag that cannot pass
+  # CI is not a release.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  # Build and publish are separate jobs on purpose. Only `publish` can mint a
+  # PyPI credential, and all it does is upload files it did not produce; the
+  # build — which runs hatchling and resolves the dependency tree, i.e. other
+  # people's code — never holds one.
+  build:
+    name: build and check the artifacts
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a commit, not a tag: a tag can be moved onto other code.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          python-version: "3.13"
+
+      # A tag is typed by hand and the version lives in a file, so the two can
+      # disagree. Without this, tagging v0.3.0 on a tree that still says 0.2.0
+      # publishes 0.2.0 under a tag claiming otherwise — and a version on PyPI
+      # cannot be replaced, only yanked.
+      - name: the tag must be the version being published
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(uv run --no-project python -c \
+            'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')
+          if [ "$tag" != "$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match pyproject version $version"
+            exit 1
+          fi
+          echo "publishing $version"
+
+      # A release nobody can read the notes for is half a release, and the
+      # changelog is the only place this project records what changed.
+      - name: the changelog must have an entry for this version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          grep -q "^## \[$version\]" CHANGELOG.md || {
+            echo "::error::CHANGELOG.md has no '## [$version]' heading"
+            exit 1
+          }
+          echo "changelog entry found"
+
+      - name: build
+        run: uv build
+
+      - name: the artifacts are well-formed
+        run: uvx twine check dist/*
+
+      # Installing the wheel somewhere clean is the last cheap point at which
+      # a packaging mistake is noticeable: every test above imports from the
+      # working tree, where a missing module or an unresolvable entry point is
+      # invisible. The same script backs `make dist-check`, so the rehearsal
+      # somebody runs before tagging is this exact check.
+      - name: the installed wheel runs, and registers every tool
+        run: scripts/verify-wheel.sh dist/*.whl
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/atlassian-agent-mcp
+    permissions:
+      id-token: write # the whole mechanism; without it there is no credential
+    steps:
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      # `always`, not `automatic`: if trusted publishing is unavailable for any
+      # reason, fail rather than quietly looking for a token that should not
+      # exist.
+      - name: publish
+        run: uv publish --trusted-publishing always

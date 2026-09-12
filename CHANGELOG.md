@@ -6,6 +6,59 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-12
+
+### Added
+
+- Automated PyPI publishing. Pushing a `v*` tag runs the same CI gate main
+  gets, builds, verifies, and uploads via PyPI trusted publishing — no token
+  exists in the repository, in a GitHub secret, or on a laptop. The workflow
+  refuses a tag whose version disagrees with `pyproject.toml` or that has no
+  changelog heading, because a version on PyPI can be yanked but never
+  replaced. See AGENTS.md §B5.
+- `scripts/verify-wheel.sh`, which installs a built wheel into a clean
+  virtualenv, resolves both console scripts and registers every MCP tool there.
+  Every other test imports from the working tree, where a module missing from
+  the wheel is invisible. Run by `make dist-check` and by the release workflow,
+  so the local rehearsal and the release cannot drift apart.
+- `make build`, `make dist-check` and `make release-check`, the last of which
+  rehearses a release end to end and prints the commands that publish it.
+- `.github/dependabot.yml`, weekly for GitHub Actions and for the lockfile. The
+  actions are pinned to commit SHAs, which is safe from a moved tag and blind
+  to a patched vulnerability; something has to bring the new SHA to a PR.
+- Packaging contract tests: the declared version is the one the package
+  reports, the distribution name is the one PyPI is configured for, and both
+  console scripts resolve.
+
+### Changed
+
+- **The distribution is now `atlassian-agent-mcp`.** `atlassian-agent` on PyPI
+  belongs to an unrelated project and was never available. The import package,
+  the module layout and both console-script names are unchanged.
+- The version is declared in `pyproject.toml` alone. `atlassian_agent.__version__`
+  reads it back from the installed metadata rather than repeating the literal,
+  which is a pair that drifts silently in exactly the release that matters.
+- `fastmcp` is bounded `>=4.0,<5`. It was open-ended above 3.4.0, so a fresh
+  resolve already picked up 4.0.3 while this repository's lockfile said 3.4.4 —
+  the failure mode the `atlassian-python-api` cap exists to prevent. The floor
+  is 4 because MCP SDK v2 renamed the tool annotations this server sets.
+- Tool annotations are set as `read_only_hint` / `destructive_hint`, the names
+  MCP SDK v2 uses. The camelCase spellings still worked but were deprecated,
+  and this is the annotation that tells a client which tools are safe.
+- `requires-python` no longer caps the interpreter at `<3.14`. A cap does not
+  protect this package from a future Python; it stops anyone on that Python
+  from installing it, and only a new release can lift it. 3.14 is in the CI
+  matrix.
+- CI pins every action to a commit rather than a tag, and is callable as a
+  reusable workflow so the release runs the identical gate instead of a copy.
+- README and AGENTS.md lead with the installed route, and say where credentials
+  live in each: `.env` from a clone, the client's `env` block when installed.
+
+### Fixed
+
+- The architecture diagram in the README claimed 9 reads and 4 writes. There
+  are 13 and 9.
+
 ## [0.2.0] - 2026-08-29
 
 ### Added
@@ -103,6 +156,7 @@ Initial release.
   escape the repository root, and refuse to touch `.env`.
 - Diagnostic Typer CLI (`page`, `family`, `append-sentence`) for smoke tests.
 
-[Unreleased]: https://github.com/danielvogler/atlassian_agent/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/danielvogler/atlassian_agent/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/danielvogler/atlassian_agent/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/danielvogler/atlassian_agent/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/danielvogler/atlassian_agent/releases/tag/v0.1.0
