@@ -118,7 +118,7 @@ wheels = [
 
 [[package]]
 name = "atlassian-agent-mcp"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "atlassian-python-api" },

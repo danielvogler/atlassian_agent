@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-12
+
 ### Added
 
 - A GitHub release for every tag, created after the PyPI upload succeeds and
@@ -18,6 +20,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and fails if it has none. The release workflow uses it both to refuse a tag
   with no entry and to render that entry as the release notes, so the check and
   the notes cannot disagree; `make release-check` runs the same script.
+
+### Note
+
+- The package itself is unchanged from 0.3.0 — nothing under `src/` moved.
+  This release exists so the tag produces the GitHub release that 0.3.0,
+  published before the job existed, does not have.
 
 ## [0.3.0] - 2026-09-12
 
@@ -169,7 +177,8 @@ Initial release.
   escape the repository root, and refuse to touch `.env`.
 - Diagnostic Typer CLI (`page`, `family`, `append-sentence`) for smoke tests.
 
-[Unreleased]: https://github.com/danielvogler/atlassian_agent/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/danielvogler/atlassian_agent/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/danielvogler/atlassian_agent/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/danielvogler/atlassian_agent/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/danielvogler/atlassian_agent/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/danielvogler/atlassian_agent/releases/tag/v0.1.0
