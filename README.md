@@ -13,6 +13,11 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-FAB040.svg?logo=pre-commit&logoColor=white)](https://pre-commit.com/)
 [![gitleaks](https://img.shields.io/badge/protected%20by-gitleaks-2ECC71.svg)](https://github.com/gitleaks/gitleaks)
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/capabilities-dark.svg">
+  <img alt="Your coding agent — Claude Code, Cursor, Gemini CLI or any MCP client — connects to one MCP server carrying twenty-two tools in four groups: pages, spaces, issues and boards. Nine of them change something, and each returns a diff and stops until you approve it. What comes out is Confluence pages and Jira issues." src="docs/assets/capabilities-light.svg">
+</picture>
+
 ---
 
 ## Start here
