@@ -12,7 +12,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     commit-message:
       prefix: "ci"
     groups:
@@ -25,7 +25,13 @@ updates:
   - package-ecosystem: uv
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    # GitHub already holds a release back for 3 days. A week means a version
+    # that was yanked or hot-fixed over its first weekend never reaches a pull
+    # request here at all. Security updates ignore this and still arrive as
+    # soon as an advisory is published.
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore"
     groups:
@@ -39,3 +45,17 @@ updates:
         # and a major bump of either needs the comment read, not merged.
         patterns: ["*"]
         update-types: ["minor", "patch"]
+
+  # Four hook repositories are pinned by rev, which rots for exactly the reason
+  # the action SHAs above do: a pin is only as current as the last person who
+  # looked at it. The fifth is local and moves with this repository. Grouped,
+  # because a rev bump is a one-line diff and four of them is still one review.
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "chore"
+    groups:
+      hooks:
+        patterns: ["*"]
