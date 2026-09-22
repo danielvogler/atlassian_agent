@@ -4,14 +4,14 @@
 </picture>
 
 [![CI](https://github.com/danielvogler/atlassian_agent/actions/workflows/ci.yml/badge.svg)](https://github.com/danielvogler/atlassian_agent/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/atlassian-agent-mcp.svg?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/atlassian-agent-mcp/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://docs.astral.sh/uv/)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://docs.astral.sh/ruff/)
-[![mypy](https://img.shields.io/badge/mypy-checked-2A6DB2.svg)](https://mypy-lang.org/)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-FAB040.svg?logo=pre-commit&logoColor=white)](https://pre-commit.com/)
-[![gitleaks](https://img.shields.io/badge/protected%20by-gitleaks-2ECC71.svg)](https://github.com/gitleaks/gitleaks)
+[![PyPI](https://img.shields.io/pypi/v/atlassian-agent-mcp.svg?color=0E0E10&label=pypi)](https://pypi.org/project/atlassian-agent-mcp/)
+[![License](https://img.shields.io/badge/license-MIT-0E0E10.svg)](./LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-0E0E10.svg)](https://www.python.org/downloads/)
+[![uv](https://img.shields.io/badge/deps-uv-0E0E10.svg)](https://docs.astral.sh/uv/)
+[![Ruff](https://img.shields.io/badge/lint-ruff-0E0E10.svg)](https://docs.astral.sh/ruff/)
+[![mypy](https://img.shields.io/badge/types-mypy-0E0E10.svg)](https://mypy-lang.org/)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-0E0E10.svg)](https://pre-commit.com/)
+[![gitleaks](https://img.shields.io/badge/secrets-gitleaks-0E0E10.svg)](https://github.com/gitleaks/gitleaks)
 
 ---
 
