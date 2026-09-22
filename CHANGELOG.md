@@ -14,6 +14,43 @@ is one where an entry can quietly disappear.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-22
+
+### Changed
+
+- `atlassian-python-api` may now resolve to 5.x: the cap moved from `<5` to
+  `<6`. v5 moved the Confluence methods onto the instance rather than the
+  class and renamed `get_page_by_title`'s first parameter `space` ->
+  `space_key`; neither reaches this code, which holds an instance and passes
+  that argument positionally. A fresh install therefore resolves a different
+  major than 0.3.1 did, which is what makes this a minor and not a patch.
+- The changelog is written when a release is cut, from the commits it
+  contains, rather than accumulated under `[Unreleased]` as each pull request
+  lands. Every branch editing the same few lines conflicted with every other
+  branch, and the conflict was in prose, where a resolution can drop an entry
+  without anything failing. `[Unreleased]` now stays empty on purpose.
+- Dependabot runs monthly instead of weekly, with a 7-day cooldown on `uv`, so
+  a release yanked or hot-fixed in its first week never reaches a pull request
+  here. Weekly across three ecosystems was a pull request every few days,
+  which is the volume at which they stop being read. Security updates are
+  unaffected — those are a separate feed and still arrive with the advisory.
+- The badge row is one colour rather than eight vendor brand colours, and the
+  uv and Ruff badges no longer resolve through those projects' own
+  repositories. The CI badge stays dynamic: a badge that cannot report a red
+  build is worse than one that does not match.
+
+### Added
+
+- A capabilities picture at the top of `README.md`, light and dark: the client
+  that drives it, the twenty-two tools grouped into the four jobs they do, and
+  the two systems the work lands in. It renders on GitHub; PyPI does not
+  resolve relative image paths, so the project page is unchanged.
+- Dependabot now watches the pre-commit hooks, which were the one pinned thing
+  nothing updated — four repositories pinned by `rev` that rot exactly the way
+  an unwatched action SHA does.
+- `ci.yml` answers to `workflow_dispatch`, so a run that failed on something
+  outside the diff can be retried without pushing an empty commit.
+
 ## [0.3.1] - 2026-09-12
 
 ### Added
@@ -185,7 +222,8 @@ Initial release.
   escape the repository root, and refuse to touch `.env`.
 - Diagnostic Typer CLI (`page`, `family`, `append-sentence`) for smoke tests.
 
-[Unreleased]: https://github.com/danielvogler/atlassian_agent/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/danielvogler/atlassian_agent/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/danielvogler/atlassian_agent/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/danielvogler/atlassian_agent/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/danielvogler/atlassian_agent/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/danielvogler/atlassian_agent/compare/v0.1.0...v0.2.0
