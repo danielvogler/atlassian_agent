@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+A version's section here is what its GitHub release says. The release workflow
+refuses a tag with no entry, so a release without notes cannot happen.
+
+Sections are written when the release is cut, from the commits it contains —
+not as each pull request lands. `[Unreleased]` stays empty on purpose: it is
+the one place every branch would otherwise edit, and a merge conflict in prose
+is one where an entry can quietly disappear.
+
 ## [Unreleased]
 
 ## [0.3.1] - 2026-09-12
