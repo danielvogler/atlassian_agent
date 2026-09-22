@@ -9,6 +9,10 @@ on:
   # So the release workflow can run exactly this gate rather than a copy of it
   # that drifts. Nothing reaches PyPI without passing what main passes.
   workflow_call:
+  # A run can fail for something that is not in the diff - a registry timeout
+  # during install is the usual one. Without this, re-running the whole gate
+  # means pushing a commit that changes nothing.
+  workflow_dispatch:
 
 permissions:
   contents: read
