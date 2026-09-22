@@ -292,11 +292,20 @@ To cut a release:
 1. Bump `version` in `pyproject.toml`. It is declared there and nowhere else —
    `atlassian_agent.__version__` reads it back from the installed metadata, and
    a test fails if the two disagree.
-2. Move the `[Unreleased]` entries in `CHANGELOG.md` under a
-   `## [<version>] - <date>` heading. The workflow refuses a tag whose version
-   has no such section, and the section becomes the GitHub release's notes —
-   `scripts/changelog-section.sh <version>` prints exactly what will be
-   published, so there is no second place to keep release notes in step.
+2. Write the release's section in `CHANGELOG.md` under a
+   `## [<version>] - <date>` heading, from `git log v<previous>..HEAD`. The
+   workflow refuses a tag whose version has no such section, and the section
+   becomes the GitHub release's notes — `scripts/changelog-section.sh
+   <version>` prints exactly what will be published, so there is no second
+   place to keep release notes in step.
+
+   **The changelog is written here, at the release, and nowhere else.** A
+   pull request does not touch `CHANGELOG.md`. Every branch editing the same
+   few lines under `[Unreleased]` conflicts with every other branch editing
+   them, and the conflict is always in prose, where a resolution can silently
+   drop somebody's entry. Writing the section once, from the commits that are
+   actually in the release, costs one pass and cannot lose an entry — which is
+   the other reason commit messages here say *why*.
 3. `make release-check`. It runs everything CI runs, builds the sdist and
    wheel, runs `twine check`, installs the wheel into a clean virtualenv and
    registers its tools there, confirms the changelog entry and a clean tree,
